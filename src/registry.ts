@@ -15,13 +15,12 @@ export function registryUrl(name: string): string {
 }
 
 async function timedFetch(fetcher: Fetcher, url: string): Promise<Response> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetcher(url, { headers: { accept: 'application/json' }, signal: ctrl.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+  // The timeout signal remains active while the caller consumes the response body,
+  // not just until fetch() receives the response headers.
+  return fetcher(url, {
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
 }
 
 function retryDelayMs(response: Response, attempt: number): number {
