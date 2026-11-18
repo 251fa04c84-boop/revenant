@@ -11,16 +11,17 @@ Built for Kiroween 2026, **Resurrection** category: it brings abandoned software
 - Shows a headstone per package. "Show resurrection" reveals replacements, effort, migration notes and a before/after diff.
 - **Resurrect my package.json:** downloads a new manifest with the near drop-in swaps applied (for example node-sass to sass, node-uuid to uuid). Swaps that need code changes are left in place and listed, so the file never removes something your code still imports.
 - Generates `npm uninstall` / `npm install` commands for the same safe swaps, and a Markdown plan you can paste into an issue or PR.
+- Handles npm 429 rate limits and transient 502/503/504 responses with bounded retries and `Retry-After` support; persistent failures remain explicitly unknown.
 - Runs entirely in your browser. Your manifest never leaves the page; only package names go to the npm registry.
 
 ## Run it
 ```sh
 npm install
 npm run dev      # http://localhost:5173
-npm test         # unit tests
+npm test         # unit and deterministic property-style tests
 npm run build    # typecheck + static build in dist/
 ```
-It is a static site: deploy `dist/` anywhere (a GitHub Pages workflow is included).
+It is a static site: deploy `dist/` anywhere (GitHub Pages is configured).
 
 ## How classification works
 | Signal | Effect |
@@ -34,12 +35,15 @@ It is a static site: deploy `dist/` anywhere (a GitHub Pages workflow is include
 
 Score = 100 × (1 − weighted share of known packages), weights 0 / 0.25 / 0.5 / 1.
 
+## Quality gates
+The CI workflow runs `npm ci`, the full Vitest suite and the production TypeScript/Vite build on pull requests and pushes to the main and improvement branches. The invariant suite exercises 256 generated classifier datasets and 128 generated resurrection manifests with a deterministic seed, so failures are reproducible.
+
 ## Built with Kiro
-The `/.kiro` folder holds the spec (requirements, design, tasks), steering docs and an agent hook that runs the tests when verdict logic changes. See `docs/KIRO.md`.
+The `/.kiro` folder holds the spec (requirements, design, tasks), steering docs and an agent hook that runs tests when verdict logic changes. See `docs/KIRO.md`.
 
 ## Limits
 - Replacements come from a hand-curated list (53 packages). Anything else gets a neutral "look for an alternative" note.
 - Registry data only: no source-code analysis, no vulnerability database.
-- Branch names containing `/` are not supported in GitHub URLs.
+- GitHub refs with branch names containing slashes are not currently supported in repository URLs.
 
 MIT licensed.
