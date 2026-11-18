@@ -8,9 +8,13 @@ const KINDS: DepKind[] = [
   'devDependencies',
 ];
 
-const NON_REGISTRY = /^(?:workspace:|file:|link:|portal:|patch:|git\+|git:|github:|gitlab:|bitbucket:|https?:|\.{0,2}\/|~\/)/i;
-const VALID_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/i;
+const NON_REGISTRY = /^(?:workspace:|file:|link:|portal:|patch:|git\\+|git:|github:|gitlab:|bitbucket:|https?:|\\.{0,2}\\/|~\\/)/i;
+const VALID_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\\/)?[a-z0-9~-][a-z0-9._~-]*$/;
 const NPM_ALIAS = /^npm:(@?[^@]+)(?:@(.+))?$/;
+
+function isValidPackageName(name: string): boolean {
+  return name.length <= 214 && name !== 'node_modules' && name !== 'favicon.ico' && VALID_NAME.test(name);
+}
 
 export function parsePackageJson(text: string): ParsedManifest {
   let data: unknown;
@@ -43,7 +47,7 @@ export function parsePackageJson(text: string): ParsedManifest {
         skipped.push({ name: rawName, range, reason: 'Not installed from the npm registry' });
         continue;
       }
-      if (!VALID_NAME.test(name)) {
+      if (!isValidPackageName(name)) {
         skipped.push({ name: rawName, range, reason: 'Not a valid npm package name' });
         continue;
       }
@@ -69,14 +73,14 @@ export interface RepoRef {
 
 /** Accepts `owner/repo`, a github.com URL, or a tree/blob URL pointing at a sub-folder. */
 export function parseRepoRef(input: string): RepoRef | null {
-  const text = input.trim().replace(/\.git$/, '');
+  const text = input.trim().replace(/\\.git$/, '');
   if (!text) return null;
-  const short = /^([\w.-]+)\/([\w.-]+)$/.exec(text);
+  const short = /^([\\w.-]+)\\/([\\w.-]+)$/.exec(text);
   if (short && short[1] && short[2]) return { owner: short[1], repo: short[2] };
 
   let url: URL;
   try {
-    url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    url = new URL(/^https?:\\/\\//i.test(text) ? text : `https://${text}`);
   } catch {
     return null;
   }
@@ -84,7 +88,7 @@ export function parseRepoRef(input: string): RepoRef | null {
   const parts = url.pathname.split('/').filter(Boolean);
   const [owner, repo, mode, branch, ...rest] = parts;
   if (!owner || !repo) return null;
-  const ref: RepoRef = { owner, repo: repo.replace(/\.git$/, '') };
+  const ref: RepoRef = { owner, repo: repo.replace(/\\.git$/, '') };
   if ((mode === 'tree' || mode === 'blob') && branch) {
     ref.branch = branch; // limitation: branch names containing "/" are not supported
     if (mode === 'blob' && rest.at(-1) === 'package.json') rest.pop();
