@@ -2,6 +2,7 @@
 
 - [x] 1. Scaffold Vite + TypeScript + Vitest project, MIT license, .gitignore that keeps /.kiro (Req 4)
 - [x] 2. Manifest parsing: sections, dedupe, aliases, non-registry skips, errors (Req 1.1–1.5)
+  - [x] 2.2 Validate npm names (lowercase, reserved names, 214-character maximum) before registry lookup
   - [x] 2.1 GitHub URL and sub-folder parsing, raw URL builder (Req 1.6)
 - [x] 3. Registry client: packument extraction, timeouts, bounded concurrency, best-effort downloads (Req 2, 4.1)
   - [x] 3.1 Retry npm rate-limit and transient gateway responses with Retry-After support and a strict retry cap
