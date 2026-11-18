@@ -6,6 +6,7 @@ Built for Kiroween 2026, **Resurrection** category: it brings abandoned software
 
 ## What it does
 - Reads `dependencies`, `devDependencies`, `peerDependencies` and `optionalDependencies`; resolves `npm:` aliases; skips `file:`, `workspace:` and git specifiers and tells you so.
+- Validates npm package names before network requests (lowercase, reserved names and the 214-character limit).
 - Checks each package against the public npm registry and labels it **alive, fading, restless or dead** with a plain-language reason (deprecation notice, time since last release, major versions behind).
 - Separates *abandoned* from *finished*: very widely used old packages are not called dead on age alone.
 - Shows a headstone per package. "Show resurrection" reveals replacements, effort, migration notes and a before/after diff.

@@ -13,7 +13,7 @@ Revenant scans a project's npm dependencies, classifies each as alive, fading, r
 3. WHEN a dependency uses a non-registry specifier (file:, workspace:, git, URL) THEN the system SHALL skip it and list it under "not checked".
 4. WHEN a dependency uses an `npm:` alias THEN the system SHALL check the real target package.
 5. WHEN the JSON is invalid THEN the system SHALL show an error that says how to fix it.
-6. WHEN the user enters `owner/repo` or a github.com URL THEN the system SHALL fetch package.json from that repo or sub-folder, and SHALL explain a 404.
+6. WHEN the user enters `owner/repo` or a github.com URL THEN the system SHALL fetch package.json from that repo or sub-folder, and SHALL explain a 404.\n7. WHEN a dependency name violates npm naming rules (uppercase, reserved names, invalid characters, or over 214 characters) THEN the system SHALL skip it with a clear reason and SHALL NOT query the registry.
 
 ### 2. Classify health
 **User story:** As a maintainer, I want an honest verdict per package, so that I can trust what I act on.

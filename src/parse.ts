@@ -9,8 +9,12 @@ const KINDS: DepKind[] = [
 ];
 
 const NON_REGISTRY = /^(?:workspace:|file:|link:|portal:|patch:|git\+|git:|github:|gitlab:|bitbucket:|https?:|\.{0,2}\/|~\/)/i;
-const VALID_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/i;
+const VALID_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;
 const NPM_ALIAS = /^npm:(@?[^@]+)(?:@(.+))?$/;
+
+function isValidPackageName(name: string): boolean {
+  return name.length <= 214 && name !== 'node_modules' && name !== 'favicon.ico' && VALID_NAME.test(name);
+}
 
 export function parsePackageJson(text: string): ParsedManifest {
   let data: unknown;
@@ -43,7 +47,7 @@ export function parsePackageJson(text: string): ParsedManifest {
         skipped.push({ name: rawName, range, reason: 'Not installed from the npm registry' });
         continue;
       }
-      if (!VALID_NAME.test(name)) {
+      if (!isValidPackageName(name)) {
         skipped.push({ name: rawName, range, reason: 'Not a valid npm package name' });
         continue;
       }
