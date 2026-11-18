@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fetchInfo } from '../src/registry';
+import { fetchInfo, mapPool } from '../src/registry';
 
 const packument = {
   'dist-tags': { latest: '1.2.3' },
@@ -29,6 +29,11 @@ describe('npm registry resilience', () => {
 
     expect(calls).toBe(3);
     expect(result).toEqual({ name: 'example-package', error: 'network' });
+  });
+
+  it('rejects invalid concurrency limits instead of silently skipping work', async () => {
+    await expect(mapPool([1, 2], 0, async (n) => n)).rejects.toThrow(/positive integer/);
+    await expect(mapPool([1, 2], 1.5, async (n) => n)).rejects.toThrow(/positive integer/);
   });
 
   it('does not retry a genuine missing package', async () => {
