@@ -1,0 +1,20 @@
+{
+  "name": "revenant",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Raise your dead dependencies. Scan a package.json for abandoned npm packages and get a resurrection plan.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Run unit tests when logic changes",
+  "version": "1",
+  "description": "Whenever a core logic file or its tests change, run the unit tests so verdict rules never regress silently.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["src/classify.ts", "src/parse.ts", "src/plan.ts", "src/registry.ts", "src/replacements.ts", "tests/**/*.ts"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A Revenant logic file changed. Run `npm test`. If anything fails, fix the code (not the test) unless the requirement in .kiro/specs/revenant/requirements.md has changed, and explain the cause in one sentence."
+  }
+}

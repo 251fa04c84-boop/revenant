@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Revenant: raise your dead dependencies</title>
+    <meta name="description" content="Paste a package.json or a GitHub repo. Revenant finds abandoned npm packages and gives you a resurrection plan." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M6 30V13a10 10 0 0 1 20 0v17z' fill='%232b6f62'/%3E%3Cpath d='M16 10v12M11 15h10' stroke='%23dfe7e3' stroke-width='2.5'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <a class="skip" href="#results">Skip to results</a>
+    <header class="masthead">
+      <h1>Revenant</h1>
+      <p class="tagline">Find the npm packages your project depends on that nobody maintains any more, and get a plan to replace them.</p>
+    </header>
+
+    <main>
+      <section class="intake" aria-labelledby="intake-title">
+        <h2 id="intake-title" class="sr">Choose a project to scan</h2>
+        <div class="tabs" role="tablist" aria-label="Input method">
+          <button role="tab" id="tab-paste" aria-selected="true" aria-controls="panel-paste">Paste package.json</button>
+          <button role="tab" id="tab-repo" aria-selected="false" aria-controls="panel-repo" tabindex="-1">GitHub repo</button>
+        </div>
+
+        <div role="tabpanel" id="panel-paste" aria-labelledby="tab-paste">
+          <label class="sr" for="manifest">package.json contents</label>
+          <textarea id="manifest" spellcheck="false" placeholder='{ "dependencies": { "request": "^2.88.0" } }' rows="9"></textarea>
+        </div>
+        <div role="tabpanel" id="panel-repo" aria-labelledby="tab-repo" hidden>
+          <label for="repo">Public repository</label>
+          <input id="repo" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="owner/repo or https://github.com/owner/repo/tree/main/app" />
+          <p class="hint">Reads package.json from the default branch. For a monorepo, paste a link to the sub-folder.</p>
+        </div>
+
+        <div class="actions">
+          <button id="scan" class="primary" type="button">Scan dependencies</button>
+          <button id="example" class="quiet" type="button">Load an example</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="results" class="results" tabindex="-1" aria-label="Scan results" hidden></section>
+    </main>
+
+    <footer>
+      <p>Runs entirely in your browser. Only package names are sent to the public npm registry; your manifest never leaves this page.</p>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
