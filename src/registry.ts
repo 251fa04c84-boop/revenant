@@ -4,6 +4,8 @@ import { monthsBetween } from './classify';
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 const REQUEST_TIMEOUT_MS = 20_000;
+const MAX_RETRIES = 2;
+const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
 /** Packages this old (or deprecated) are the only ones we spend a downloads lookup on. */
 const DOWNLOADS_LOOKUP_AFTER_MONTHS = 18;
 
@@ -21,6 +23,18 @@ async function timedFetch(fetcher: Fetcher, url: string): Promise<Response> {
     clearTimeout(timer);
   }
 }
+
+function retryDelayMs(response: Response, attempt: number): number {
+  const header = response.headers.get('retry-after');
+  if (header) {
+    const seconds = Number(header);
+    const dateDelay = Number.isNaN(seconds) ? Date.parse(header) - Date.now() : seconds * 1_000;
+    if (Number.isFinite(dateDelay)) return Math.max(0, Math.min(dateDelay, 2_000));
+  }
+  return Math.min(250 * 2 ** attempt, 2_000);
+}
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** Turns a raw packument into the few fields we care about. Exported for tests. */
 export function extractInfo(name: string, doc: unknown): RegistryInfo {
@@ -49,10 +63,17 @@ export function extractInfo(name: string, doc: unknown): RegistryInfo {
 
 export async function fetchInfo(name: string, fetcher: Fetcher = fetch): Promise<RegistryInfo> {
   try {
-    const res = await timedFetch(fetcher, registryUrl(name));
-    if (res.status === 404) return { name, error: 'not-found' };
-    if (!res.ok) return { name, error: 'network' };
-    return extractInfo(name, await res.json());
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const res = await timedFetch(fetcher, registryUrl(name));
+      if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_RETRIES) {
+        await wait(retryDelayMs(res, attempt));
+        continue;
+      }
+      if (res.status === 404) return { name, error: 'not-found' };
+      if (!res.ok) return { name, error: 'network' };
+      return extractInfo(name, await res.json());
+    }
+    return { name, error: 'network' };
   } catch {
     return { name, error: 'network' };
   }
@@ -95,6 +116,7 @@ export async function mapPool<T, R>(
   fn: (item: T, index: number) => Promise<R>,
   onProgress?: (done: number, total: number) => void,
 ): Promise<R[]> {
+  if (!Number.isInteger(limit) || limit < 1) throw new Error('Concurrency limit must be a positive integer.');
   const results = new Array<R>(items.length);
   let next = 0;
   let done = 0;
