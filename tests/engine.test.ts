@@ -261,3 +261,11 @@ describe('missing download data', () => {
   });
 });
 
+describe('deprecated packages and download wording', () => {
+  it('does not claim download data was unavailable for deprecated packages', () => {
+    const f = classify(dep('request'), info({ name: 'request', latest: '2.88.2', deprecated: 'deprecated', lastPublish: monthsAgo(80) }), NOW);
+    expect(f.verdict).toBe('dead');
+    expect(f.reasons.join(' ')).not.toMatch(/Download counts were unavailable/);
+  });
+});
+

@@ -72,7 +72,8 @@ export function classify(dep: Dep, info: RegistryInfo, now: Date = new Date()): 
     if (v !== 'alive') {
       const quiet = `No release in ${humanAge(ageMonths)} (latest ${info.latest}).`;
       const finished = info.weeklyDownloads !== undefined && info.weeklyDownloads >= FINISHED_DOWNLOADS;
-      const noData = info.weeklyDownloads === undefined && v !== 'fading';
+      // Deprecated packages never get a downloads lookup, so "unavailable" would be misleading for them.
+      const noData = info.weeklyDownloads === undefined && v !== 'fading' && !info.deprecated;
       reasons.push(
         finished
           ? `${quiet} Still very widely used, so it may simply be finished.`

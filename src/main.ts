@@ -216,7 +216,7 @@ function stone(f: Finding): HTMLElement {
     .join(' · ');
 
   const body = h('div', { class: 'epitaph' });
-  body.append(h('p', { class: 'rip' }, `${VERDICT_COPY[v].word}${born && v !== 'alive' ? `, last stirred ${born}` : ''}`));
+  body.append(h('p', { class: 'rip' }, `${VERDICT_COPY[v].word}${born && f.ageMonths !== undefined && f.ageMonths >= 18 && v !== 'alive' ? `, last stirred ${born}` : ''}`));
   const reasons = h('ul', {});
   for (const r of f.reasons) reasons.append(h('li', {}, r));
   body.append(reasons);
