@@ -57,6 +57,20 @@ describe('parsePackageJson', () => {
     expect(parsed.skipped.every((item) => item.reason === 'Not a valid npm package name')).toBe(true);
   });
 
+  it('skips dependency entries whose ranges are not strings', () => {
+    const parsed = parsePackageJson(JSON.stringify({
+      dependencies: {
+        numeric: 1,
+        nullRange: null,
+        objectRange: { version: '1.0.0' },
+        valid: '^1.0.0',
+      },
+    }));
+    expect(parsed.deps.map((d) => d.name)).toEqual(['valid']);
+    expect(parsed.skipped.map((s) => s.name).sort()).toEqual(['nullRange', 'numeric', 'objectRange']);
+    expect(parsed.skipped.every((s) => s.reason === 'Dependency range must be a string')).toBe(true);
+  });
+
   it('rejects invalid names and bad JSON', () => {
     expect(parsePackageJson(JSON.stringify({ dependencies: { 'Bad Name!': '1.0.0' } })).skipped).toHaveLength(1);
     expect(() => parsePackageJson('{nope')).toThrow(/valid JSON/);
