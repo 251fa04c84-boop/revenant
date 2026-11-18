@@ -36,6 +36,16 @@ describe('npm registry resilience', () => {
     await expect(mapPool([1, 2], 1.5, async (n) => n)).rejects.toThrow(/positive integer/);
   });
 
+  it('keeps a timeout signal attached to the response-body request', async () => {
+    let signal: AbortSignal | null | undefined;
+    await fetchInfo('example-package', async (_url, init) => {
+      signal = init?.signal;
+      return new Response(JSON.stringify(packument), { status: 200 });
+    });
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal?.aborted).toBe(false);
+  });
+
   it('does not retry a genuine missing package', async () => {
     let calls = 0;
     const result = await fetchInfo('missing-package', async () => {
