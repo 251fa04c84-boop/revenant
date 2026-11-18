@@ -170,7 +170,7 @@ const KB: Replacement[] = [
     effort: 'moderate',
     notes: 'Move front-end packages to npm and bundle them with Vite or esbuild.',
   },
-  rename('faker', '@faker-js/faker', 'The original faker package was abandoned in 2022; the community maintains @faker-js/faker.', 'trivial',
+  rename('faker', '@faker-js/faker', 'The original faker package was abandoned in 2022; the community maintains @faker-js/faker.', 'moderate',
     'API names changed in newer majors (for example `faker.name.findName()` became `faker.person.fullName()`).'),
   rename('node-pre-gyp', '@mapbox/node-pre-gyp', 'Deprecated: use the maintained @mapbox/node-pre-gyp.'),
   rename('uglify-es', 'terser', 'Deprecated: uglify-es is unmaintained; terser is its maintained successor.'),

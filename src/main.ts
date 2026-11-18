@@ -1,9 +1,9 @@
 import './style.css';
 import { EXAMPLE_MANIFEST } from './example';
 import { classify, humanAge, sortFindings, summarize } from './classify';
-import { buildMarkdown, migrationCommands } from './plan';
+import { actionable, buildMarkdown, migrationCommands, replacementPackages, resurrect, type Resurrection } from './plan';
 import { parsePackageJson, parseRepoRef, rawManifestUrl } from './parse';
-import { lookup, mapPool } from './registry';
+import { fetchInfo, lookup, mapPool } from './registry';
 import type { Finding, ParsedManifest, Verdict } from './types';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -32,7 +32,7 @@ const VERDICT_COPY: Record<Verdict, { word: string; line: string }> = {
   unknown: { word: 'Unknown', line: 'Could not be checked.' },
 };
 
-const state = { findings: [] as Finding[], manifest: null as ParsedManifest | null, filter: 'all' as 'all' | Verdict };
+const state = { text: '', findings: [] as Finding[], manifest: null as ParsedManifest | null, filter: 'all' as 'all' | Verdict };
 
 const manifestEl = $<HTMLTextAreaElement>('manifest');
 const repoEl = $<HTMLInputElement>('repo');
@@ -103,7 +103,9 @@ async function scan(): Promise<void> {
   resultsEl.hidden = true;
   try {
     setStatus(mode === 'repo' ? 'Fetching package.json…' : 'Reading package.json…');
-    const manifest = parsePackageJson(await loadManifestText());
+    const text = await loadManifestText();
+    const manifest = parsePackageJson(text);
+    state.text = text;
     if (manifest.deps.length === 0) throw new Error('This package.json has no dependencies to check.');
     state.manifest = manifest;
     const now = new Date();
@@ -163,20 +165,42 @@ function render(): void {
     URL.revokeObjectURL(url);
   });
 
+  const resurrectOut = h('div', { class: 'resurrection', 'aria-live': 'polite' });
+  const canResurrect = actionable(state.findings).length > 0;
+  const resurrectBtn = h('button', { type: 'button', class: 'primary' }, 'Resurrect my package.json');
+  resurrectBtn.addEventListener('click', async () => {
+    resurrectBtn.disabled = true;
+    resurrectOut.replaceChildren(h('p', { class: 'status' }, 'Looking up the latest versions of the replacements…'));
+    try {
+      const pkgs = replacementPackages(state.findings);
+      const infos = await mapPool(pkgs, 8, (n) => fetchInfo(n));
+      const versions: Record<string, string> = {};
+      pkgs.forEach((n, i) => {
+        const v = infos[i]?.latest;
+        if (v) versions[n] = v;
+      });
+      showResurrection(resurrectOut, resurrect(state.text, state.findings, versions));
+    } catch {
+      resurrectOut.replaceChildren(h('p', { class: 'status error' }, 'Could not build the new package.json. Check that the pasted manifest is valid JSON and scan again.'));
+    } finally {
+      resurrectBtn.disabled = false;
+    }
+  });
+
   const head = h(
     'div',
     { class: 'summary' },
     h('h2', {}, m?.name ? `The graveyard of ${m.name}` : 'The graveyard'),
     verdictLine,
     tally,
-    h('div', { class: 'actions' }, copyBtn, dlBtn),
+    h('div', { class: 'actions' }, canResurrect ? resurrectBtn : null, copyBtn, dlBtn),
   );
 
-  const parts: Node[] = [head];
+  const parts: Node[] = [head, resurrectOut];
 
   if (cmds.length) {
     const pre = h('pre', {}, h('code', {}, cmds.join('\n')));
-    parts.push(h('div', { class: 'migration' }, h('h3', {}, 'Raise them all'), h('p', {}, 'Swap every package that has a clear replacement. Review the notes on each stone before you run these.'), pre));
+    parts.push(h('div', { class: 'migration' }, h('h3', {}, 'Raise the easy ones'), h('p', {}, 'These swaps are near drop-in. Anything that needs code changes is described on its stone and left out here.'), pre));
   }
 
   // filters
@@ -249,3 +273,43 @@ function stone(f: Finding): HTMLElement {
 }
 
 const cssId = (s: string) => s.replace(/[^a-z0-9_-]/gi, '_');
+
+function showResurrection(into: HTMLElement, r: Resurrection): void {
+  const swaps = h('ul', { class: 'swaps' });
+  for (const w of r.swaps) swaps.append(h('li', {}, h('code', {}, w.from), ' becomes ', h('code', {}, `${w.to}@${w.range}`), w.kind === 'devDependencies' ? ' (dev)' : ''));
+  const pending = h('ul', { class: 'swaps' });
+  for (const p of r.pending) pending.append(h('li', {}, h('code', {}, p.name), `: ${p.todo}`));
+
+  const download = h('button', { type: 'button', class: 'primary' }, 'Download package.json');
+  download.addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([r.json], { type: 'application/json' }));
+    const a = h('a', { href: url, download: 'package.json' });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+  const copy = h('button', { type: 'button', class: 'quiet' }, 'Copy JSON');
+  copy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(r.json);
+      copy.textContent = 'Copied';
+    } catch {
+      copy.textContent = 'Copy failed. Use Download instead.';
+    }
+    setTimeout(() => (copy.textContent = 'Copy JSON'), 2000);
+  });
+
+  const parts: (Node | null)[] = [
+    h('h3', {}, 'Resurrected'),
+    r.swaps.length
+      ? h('p', {}, `${r.swaps.length} package${r.swaps.length === 1 ? '' : 's'} swapped for a maintained one. Run npm install, update imports and run your tests.`)
+      : h('p', {}, 'No package could be swapped automatically.'),
+    r.swaps.length ? swaps : null,
+    r.pending.length ? h('p', { class: 'label' }, 'Left in place until your code changes:') : null,
+    r.pending.length ? pending : null,
+    h('div', { class: 'actions' }, download, copy),
+    h('details', { class: 'skipped' }, h('summary', {}, 'Show the new package.json'), h('pre', { class: 'diff' }, h('code', {}, r.json))),
+  ];
+  into.replaceChildren(...parts.filter((n): n is Node => n !== null));
+}

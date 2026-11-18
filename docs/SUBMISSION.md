@@ -43,7 +43,7 @@ Deadline: **Fri Dec 4, 2026, 2:00 PM PT = Sat Dec 5, 03:30 AM IST.** No extensio
 2. (0:15) Paste it, click **Scan**. Narrate: "Revenant asks npm about every package."
 3. (0:35) Graveyard appears. Point at score, tally and the dead stones.
 4. (0:55) Open **request** and **moment**: show reasons, replacement, effort, diff.
-5. (1:25) Show **Raise them all** commands and copy the Markdown plan into a GitHub issue.
+5. (1:25) Click **Resurrect my package.json**: show the swaps, the "left in place until your code changes" list, then download the new file. Copy the Markdown plan into a GitHub issue.
 6. (1:50) Switch to **GitHub repo** tab, scan a real public repo.
 7. (2:10) Show the `/.kiro` folder in the repo and say in one sentence how Kiro was used.
 8. (2:25) Close on the live URL.

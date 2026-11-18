@@ -38,3 +38,13 @@ Revenant scans a project's npm dependencies, classifies each as alive, fading, r
 1. The manifest SHALL NOT be sent to any server; only package names go to the npm registry.
 2. The UI SHALL work at 390 px width, be keyboard operable, show visible focus and respect reduced motion.
 3. Registry text SHALL never be injected as HTML.
+
+### 5. Resurrect the manifest
+**User story:** As a developer, I want a ready-to-use package.json with the easy swaps applied, so that I can start migrating right away.
+
+1. WHEN the user clicks "Resurrect my package.json" THEN the system SHALL look up the latest version of each replacement and produce a new package.json.
+2. The system SHALL only swap a dependency automatically IF its replacement is an installable package AND the migration effort is "trivial".
+3. IF a replacement is built in, needs code changes, is a peer dependency, or is installed through an npm: alias THEN the system SHALL leave the dependency in place and list what the user must do first.
+4. The new file SHALL keep every unrelated field, the original indentation and trailing newline, put each replacement in the same section as the original, keep keys sorted, and never add a replacement that is already installed.
+5. The "quick swaps" npm commands SHALL follow the same rule as 5.2.
+

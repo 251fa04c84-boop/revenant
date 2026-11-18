@@ -1,5 +1,5 @@
 import { firstInstallable } from './replacements';
-import type { Finding, Summary } from './types';
+import type { DepKind, Finding, Summary } from './types';
 
 const SKIP_PLAN: ReadonlySet<string> = new Set(['alive', 'unknown']);
 
@@ -21,10 +21,11 @@ export function migrationCommands(findings: readonly Finding[]): string[] {
   for (const f of actionable(findings)) {
     if (f.dep.kind === 'peerDependencies') continue; // peers are declared, not installed, by this project
     const alt = f.replacement ? firstInstallable(f.replacement.alts) : undefined;
+    // Only near drop-in swaps become commands. Anything that needs code changes is listed in the plan instead,
+    // because uninstalling it first would break the build.
+    if (!alt?.pkg || f.replacement?.effort !== 'trivial' || alt.pkg === f.dep.name) continue;
     remove.add(f.dep.name);
-    if (alt?.pkg && alt.pkg !== f.dep.name) {
-      (f.dep.kind === 'devDependencies' ? addDev : addProd).push(alt.pkg);
-    }
+    (f.dep.kind === 'devDependencies' ? addDev : addProd).push(alt.pkg);
   }
   const cmds: string[] = [];
   if (remove.size) cmds.push(`npm uninstall ${[...remove].join(' ')}`);
@@ -59,13 +60,13 @@ export function buildMarkdown(
 
   const cmds = migrationCommands(findings);
   if (cmds.length) {
-    out.push('## Quick migration');
+    out.push('## Quick swaps');
     out.push('');
     out.push('```sh');
     out.push(...cmds);
     out.push('```');
     out.push('');
-    out.push('Then update imports and run your tests. See the per-package notes below for API differences.');
+    out.push('These are near drop-in. Update imports and run your tests. Packages that need code changes are described below and are not included.');
     out.push('');
   }
 
@@ -92,4 +93,83 @@ export function buildMarkdown(
     out.push('');
   }
   return `${out.join('\n')}\n`;
+}
+
+export interface Swap {
+  from: string;
+  to: string;
+  range: string;
+  kind: DepKind;
+}
+export interface Pending {
+  name: string;
+  kind: DepKind;
+  /** What to do before this dependency can be removed. */
+  todo: string;
+}
+export interface Resurrection {
+  json: string;
+  swaps: Swap[];
+  pending: Pending[];
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** Installable replacement packages whose latest version we need to look up. */
+export function replacementPackages(findings: readonly Finding[]): string[] {
+  const out = new Set<string>();
+  for (const f of actionable(findings)) {
+    if (f.dep.kind === 'peerDependencies') continue;
+    const alt = f.replacement ? firstInstallable(f.replacement.alts) : undefined;
+    if (alt?.pkg) out.add(alt.pkg);
+  }
+  return [...out];
+}
+
+/**
+ * Builds a new package.json with every flagged dependency swapped that has a near drop-in package
+ * replacement (effort "trivial"). Everything else (built-in replacements, moderate or involved migrations,
+ * peer deps, npm: aliases) is left untouched and reported as `pending`, because removing it would break
+ * the build until the code is changed. `versions` maps replacement package name to its latest version.
+ */
+export function resurrect(
+  manifestText: string,
+  findings: readonly Finding[],
+  versions: Readonly<Record<string, string>> = {},
+): Resurrection {
+  const obj: unknown = JSON.parse(manifestText);
+  if (!isObj(obj)) throw new Error('Expected a package.json object.');
+  const indent = /^([ \t]+)"/m.exec(manifestText)?.[1] ?? 2;
+  const swaps: Swap[] = [];
+  const pending: Pending[] = [];
+
+  for (const f of actionable(findings)) {
+    const r = f.replacement;
+    if (!r) continue;
+    const section = obj[f.dep.kind];
+    if (!isObj(section)) continue;
+    const key = Object.keys(section).find((k) => k === f.dep.name || String(section[k]).startsWith(`npm:${f.dep.name}`));
+    if (!key) continue;
+    const first = r.alts[0];
+    const alt = firstInstallable(r.alts);
+
+    if (f.dep.kind === 'peerDependencies') {
+      pending.push({ name: f.dep.name, kind: f.dep.kind, todo: 'Peer dependency: update the range you declare yourself.' });
+    } else if (key !== f.dep.name) {
+      pending.push({ name: key, kind: f.dep.kind, todo: `Installed under an npm: alias. Replace it with ${first?.label ?? 'an alternative'} by hand.` });
+    } else if (!alt?.pkg) {
+      pending.push({ name: f.dep.name, kind: f.dep.kind, todo: `Change your code to use ${first?.label ?? 'the replacement'}, then remove this dependency.` });
+    } else if (r.effort !== 'trivial') {
+      pending.push({ name: f.dep.name, kind: f.dep.kind, todo: `Migrate to ${first?.label ?? alt.pkg} (effort: ${r.effort}), then swap the dependency. See its notes in the plan.` });
+    } else {
+      delete section[key];
+      const v = versions[alt.pkg];
+      if (!(alt.pkg in section)) section[alt.pkg] = v ? `^${v}` : 'latest';
+      const sorted = Object.fromEntries(Object.entries(section).sort(([a], [b]) => a.localeCompare(b)));
+      obj[f.dep.kind] = sorted;
+      swaps.push({ from: f.dep.name, to: alt.pkg, range: String(sorted[alt.pkg]), kind: f.dep.kind });
+    }
+  }
+  const json = JSON.stringify(obj, null, indent) + (manifestText.endsWith('\n') ? '\n' : '');
+  return { json, swaps, pending };
 }

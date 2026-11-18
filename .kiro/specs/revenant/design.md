@@ -30,3 +30,7 @@ Each dependency is a headstone: arched top, name, epitaph lines (the reasons) an
 
 ## Error handling
 Network failures degrade a single package to "unknown" instead of failing the scan; request timeout is 20 s; GitHub 404s explain what to check.
+
+## Resurrect
+`resurrect()` in `plan.ts` is a pure function: manifest text + findings + a map of replacement versions in, new JSON + swaps + pending list out. The UI fetches replacement versions first, so the function never touches the network. Only "trivial" package-for-package swaps are automated because uninstalling something the code still imports would break the build; everything else is reported as pending with what to do first.
+

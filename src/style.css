@@ -92,6 +92,13 @@ pre { margin: 0; overflow-x: auto; }
 }
 .filters button[aria-pressed='true'] { background: var(--ink); color: #fff; border-color: var(--ink); }
 
+.resurrection:not(:empty) { margin: 28px 0 0; padding: 18px 20px; max-width: 760px; background: var(--stone); border: 1px solid var(--line); border-left: 5px solid var(--moss); border-radius: 10px; }
+.resurrection h3 { font: 400 1.6rem var(--serif); margin: 0 0 6px; }
+.resurrection p { margin: 0 0 10px; }
+.swaps { margin: 0 0 12px; padding-left: 20px; }
+.swaps code { font: 0.88rem var(--mono); overflow-wrap: anywhere; }
+.resurrection .diff { max-height: 320px; overflow: auto; white-space: pre; }
+
 /* headstones: the one memorable element */
 .grave-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 28px 22px; }
 .stone article {

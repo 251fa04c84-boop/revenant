@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parsePackageJson, parseRepoRef, rawManifestUrl } from '../src/parse';
 import { classify, majorOf, rangeMajor, sortFindings, summarize } from '../src/classify';
 import { extractInfo, mapPool, registryUrl } from '../src/registry';
-import { buildMarkdown, migrationCommands } from '../src/plan';
+import { buildMarkdown, migrationCommands, replacementPackages, resurrect } from '../src/plan';
 import { ALL_KB_NAMES, findReplacement, KNOWN_REPLACEMENT_COUNT } from '../src/replacements';
 import type { Dep, RegistryInfo } from '../src/types';
 
@@ -197,10 +197,10 @@ describe('summary, sorting and plan', () => {
       classify(dep('moment', '^2.29.0', 'peerDependencies'), info({ name: 'moment', latest: '2.31.0', lastPublish: monthsAgo(2) }), NOW),
     ];
     const cmds = migrationCommands(f);
-    expect(cmds[0]).toBe('npm uninstall request node-sass');
+    expect(cmds[0]).toBe('npm uninstall node-sass');
     expect(cmds).toContain('npm install -D sass');
-    // `request`'s first alternative is native fetch, so nothing is installed for it.
-    expect(cmds.some((c) => c.startsWith('npm install ') && c.includes('undici'))).toBe(false);
+    // `request` needs code changes (native fetch), so it is never uninstalled by the quick commands.
+    expect(cmds.join('\n')).not.toMatch(/request|undici/);
     // Peer dependencies are never uninstalled.
     expect(cmds[0]).not.toMatch(/moment/);
   });
@@ -266,6 +266,87 @@ describe('deprecated packages and download wording', () => {
     const f = classify(dep('request'), info({ name: 'request', latest: '2.88.2', deprecated: 'deprecated', lastPublish: monthsAgo(80) }), NOW);
     expect(f.verdict).toBe('dead');
     expect(f.reasons.join(' ')).not.toMatch(/Download counts were unavailable/);
+  });
+});
+
+describe('resurrect', () => {
+  const manifest = JSON.stringify(
+    {
+      name: 'demo',
+      version: '1.0.0',
+      scripts: { build: 'tsc' },
+      dependencies: { zebra: '^1.0.0', request: '^2.88.2', 'node-uuid': '^1.4.8' },
+      devDependencies: { 'node-sass': '^7.0.3', typescript: '^5.0.0' },
+      peerDependencies: { moment: '>=2' },
+    },
+    null,
+    4,
+  ) + '\n';
+  const f = [
+    classify(dep('request', '^2.88.2'), info({ name: 'request', latest: '2.88.2', deprecated: 'x', lastPublish: monthsAgo(70) }), NOW),
+    classify(dep('node-uuid', '^1.4.8'), info({ name: 'node-uuid', latest: '1.4.8', deprecated: 'x', lastPublish: monthsAgo(100) }), NOW),
+    classify(dep('node-sass', '^7.0.3', 'devDependencies'), info({ name: 'node-sass', latest: '9.0.0', deprecated: 'x', lastPublish: monthsAgo(40) }), NOW),
+    classify(dep('moment', '>=2', 'peerDependencies'), info({ name: 'moment', latest: '2.31.0', lastPublish: monthsAgo(2) }), NOW),
+    classify(dep('typescript', '^5.0.0', 'devDependencies'), info({ name: 'typescript', lastPublish: monthsAgo(2) }), NOW),
+  ];
+
+  it('swaps drop-in replacements in the same section and keeps keys sorted', () => {
+    const r = resurrect(manifest, f, { sass: '1.80.0', uuid: '11.0.0' });
+    const out = JSON.parse(r.json);
+    expect(out.devDependencies).toEqual({ sass: '^1.80.0', typescript: '^5.0.0' });
+    expect(Object.keys(out.dependencies)).toEqual(['request', 'uuid', 'zebra']);
+    expect(out.dependencies.uuid).toBe('^11.0.0');
+    expect(r.swaps.map((s) => `${s.from}>${s.to}`).sort()).toEqual(['node-sass>sass', 'node-uuid>uuid']);
+  });
+
+  it('leaves built-in replacements, peers and unrelated fields alone, and reports them', () => {
+    const r = resurrect(manifest, f);
+    const out = JSON.parse(r.json);
+    expect(out.dependencies.request).toBe('^2.88.2');
+    expect(out.peerDependencies.moment).toBe('>=2');
+    expect(out.scripts).toEqual({ build: 'tsc' });
+    expect(out.name).toBe('demo');
+    expect(r.pending.map((p) => p.name).sort()).toEqual(['moment', 'request']);
+  });
+
+  it('falls back to "latest" without a known version, preserves indent and trailing newline', () => {
+    const r = resurrect(manifest, f, {});
+    expect(JSON.parse(r.json).devDependencies.sass).toBe('latest');
+    expect(r.json.startsWith('{\n    "name"')).toBe(true);
+    expect(r.json.endsWith('}\n')).toBe(true);
+  });
+
+  it('does not duplicate a replacement that is already installed', () => {
+    const m = JSON.stringify({ devDependencies: { 'node-sass': '^7.0.0', sass: '^1.50.0' } });
+    const r = resurrect(m, [f[2]!]);
+    expect(JSON.parse(r.json).devDependencies).toEqual({ sass: '^1.50.0' });
+  });
+
+  it('lists only installable, non-peer replacement packages for version lookup', () => {
+    expect(replacementPackages(f).sort()).toEqual(['sass', 'uuid']);
+  });
+
+  it('never mutates unrelated dependencies that are not flagged', () => {
+    const r = resurrect(manifest, []);
+    expect(JSON.parse(r.json)).toEqual(JSON.parse(manifest));
+    expect(r.swaps).toHaveLength(0);
+  });
+});
+
+describe('safety: only near drop-in swaps are automated', () => {
+  const popper = classify(dep('popper.js', '^1.16.1'), info({ name: 'popper.js', latest: '1.16.1', deprecated: 'x', lastPublish: monthsAgo(80) }), NOW);
+  const react = classify(dep('react-scripts', '^5.0.1', 'devDependencies'), info({ name: 'react-scripts', latest: '5.0.1', lastPublish: monthsAgo(50) }), NOW);
+  const m = JSON.stringify({ dependencies: { 'popper.js': '^1.16.1' }, devDependencies: { 'react-scripts': '^5.0.1' } });
+
+  it('does not swap moderate or involved migrations in package.json', () => {
+    const r = resurrect(m, [popper, react], { '@popperjs/core': '2.11.8', vite: '8.0.0' });
+    expect(JSON.parse(r.json)).toEqual(JSON.parse(m));
+    expect(r.swaps).toHaveLength(0);
+    expect(r.pending.map((p) => p.name).sort()).toEqual(['popper.js', 'react-scripts']);
+  });
+
+  it('does not put them in the quick commands either', () => {
+    expect(migrationCommands([popper, react])).toEqual([]);
   });
 });
 

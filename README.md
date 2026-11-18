@@ -9,7 +9,8 @@ Built for Kiroween 2026, **Resurrection** category: it brings abandoned software
 - Checks each package against the public npm registry and labels it **alive, fading, restless or dead** with a plain-language reason (deprecation notice, time since last release, major versions behind).
 - Separates *abandoned* from *finished*: very widely used old packages are not called dead on age alone.
 - Shows a headstone per package. "Show resurrection" reveals replacements, effort, migration notes and a before/after diff.
-- Generates `npm uninstall` / `npm install` commands that respect dev vs production dependencies, and a Markdown plan you can paste into an issue or PR.
+- **Resurrect my package.json:** downloads a new manifest with the near drop-in swaps applied (for example node-sass to sass, node-uuid to uuid). Swaps that need code changes are left in place and listed, so the file never removes something your code still imports.
+- Generates `npm uninstall` / `npm install` commands for the same safe swaps, and a Markdown plan you can paste into an issue or PR.
 - Runs entirely in your browser. Your manifest never leaves the page; only package names go to the npm registry.
 
 ## Run it

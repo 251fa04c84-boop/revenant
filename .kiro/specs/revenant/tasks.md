@@ -9,5 +9,7 @@
 - [x] 6. Plan generator: dev/prod aware commands, peer-safe, Markdown export (Req 3.2, 3.3)
 - [x] 7. Headstone UI: tabs, filters, disclosure, copy and download (Req 3, 4.2, 4.3)
 - [x] 8. Unit tests for parsing, registry helpers, classification, plan output
-- [ ] 9. Deploy to a static host and verify a live scan of a real repo
-- [ ] 10. Record demo video and publish blog post
+- [x] 9. Resurrect feature: resurrect() in plan.ts, UI button and panel, trivial-only swap rule (Req 5)
+- [ ] 10. Property-based tests with fast-check: score always within 0..100, sorting is a permutation, resurrect never changes unflagged dependencies and is idempotent (do this one in Kiro)
+- [ ] 11. Deploy to a static host and verify a live scan of a real repo
+- [ ] 12. Record demo video and publish blog post
