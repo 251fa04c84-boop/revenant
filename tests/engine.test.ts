@@ -327,6 +327,18 @@ describe('resurrect', () => {
     expect(r.json.endsWith('}\n')).toBe(true);
   });
 
+  it('does not confuse npm aliases whose target names only share a prefix', () => {
+    const m = JSON.stringify({ dependencies: {
+      'legacy-extra': 'npm:node-sass-extra@^1.0.0',
+      'legacy-sass': 'npm:node-sass@^7.0.0',
+    } });
+    const r = resurrect(m, [f[2]!], { sass: '1.80.0' });
+    const out = JSON.parse(r.json);
+    expect(out.dependencies).toEqual({ 'legacy-extra': 'npm:node-sass-extra@^1.0.0', 'legacy-sass': 'npm:node-sass@^7.0.0' });
+    expect(r.swaps).toHaveLength(0);
+    expect(r.pending.map((p) => p.name)).toEqual(['legacy-sass']);
+  });
+
   it('does not duplicate a replacement that is already installed', () => {
     const m = JSON.stringify({ devDependencies: { 'node-sass': '^7.0.0', sass: '^1.50.0' } });
     const r = resurrect(m, [f[2]!]);
