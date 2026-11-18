@@ -46,6 +46,17 @@ describe('parsePackageJson', () => {
     expect(m.deps.some((d) => d.name === 'alias')).toBe(false);
   });
 
+  it('rejects invalid npm names, including uppercase, reserved and overlong names', () => {
+    const longName = 'a'.repeat(215);
+    const parsed = parsePackageJson(JSON.stringify({ dependencies: {
+      UpperCase: '^1.0.0', '.hidden': '^1.0.0', node_modules: '^1.0.0', 'favicon.ico': '^1.0.0', [longName]: '^1.0.0',
+      '@Scope/pkg': 'npm:@Scope/pkg@^1.0.0', '@babel/core': '^7.0.0',
+    } }));
+    expect(parsed.deps.map((d) => d.name)).toEqual(['@babel/core']);
+    expect(parsed.skipped).toHaveLength(6);
+    expect(parsed.skipped.every((item) => item.reason === 'Not a valid npm package name')).toBe(true);
+  });
+
   it('rejects invalid names and bad JSON', () => {
     expect(parsePackageJson(JSON.stringify({ dependencies: { 'Bad Name!': '1.0.0' } })).skipped).toHaveLength(1);
     expect(() => parsePackageJson('{nope')).toThrow(/valid JSON/);
