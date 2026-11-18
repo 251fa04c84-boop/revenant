@@ -9,8 +9,12 @@ const KINDS: DepKind[] = [
 ];
 
 const NON_REGISTRY = /^(?:workspace:|file:|link:|portal:|patch:|git\\+|git:|github:|gitlab:|bitbucket:|https?:|\\.{0,2}\\/|~\\/)/i;
-const VALID_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\\/)?[a-z0-9~-][a-z0-9._~-]*$/;
+const VALID_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/;
 const NPM_ALIAS = /^npm:(@?[^@]+)(?:@(.+))?$/;
+
+function isValidPackageName(name: string): boolean {
+  return name.length <= 214 && name !== 'node_modules' && name !== 'favicon.ico' && VALID_NAME.test(name);
+}
 
 function isValidPackageName(name: string): boolean {
   return name.length <= 214 && name !== 'node_modules' && name !== 'favicon.ico' && VALID_NAME.test(name);
