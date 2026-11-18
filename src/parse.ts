@@ -47,7 +47,7 @@ export function parsePackageJson(text: string): ParsedManifest {
         skipped.push({ name: rawName, range, reason: 'Not installed from the npm registry' });
         continue;
       }
-      if (!VALID_NAME.test(name)) {
+      if (!isValidPackageName(name)) {
         skipped.push({ name: rawName, range, reason: 'Not a valid npm package name' });
         continue;
       }
