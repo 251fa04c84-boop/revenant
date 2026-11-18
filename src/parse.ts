@@ -35,7 +35,11 @@ export function parsePackageJson(text: string): ParsedManifest {
     const section = obj[kind];
     if (!section || typeof section !== 'object' || Array.isArray(section)) continue;
     for (const [rawName, rawRange] of Object.entries(section as Record<string, unknown>)) {
-      const range = typeof rawRange === 'string' ? rawRange : String(rawRange);
+      if (typeof rawRange !== 'string') {
+        skipped.push({ name: rawName, range: String(rawRange), reason: 'Dependency range must be a string' });
+        continue;
+      }
+      const range = rawRange;
       let name = rawName;
       let finalRange = range;
 
