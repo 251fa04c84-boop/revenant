@@ -85,7 +85,8 @@ export async function fetchWeeklyDownloads(
   fetcher: Fetcher = fetch,
 ): Promise<number | undefined> {
   try {
-    const res = await timedFetch(fetcher, `https://api.npmjs.org/downloads/point/last-week/${name}`);
+    const encodedName = encodeURIComponent(name);
+    const res = await timedFetch(fetcher, `https://api.npmjs.org/downloads/point/last-week/${encodedName}`);
     if (!res.ok) return undefined;
     const body = (await res.json()) as { downloads?: unknown };
     return typeof body.downloads === 'number' ? body.downloads : undefined;
