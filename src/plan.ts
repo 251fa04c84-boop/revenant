@@ -115,6 +115,13 @@ export interface Resurrection {
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
+/** Match an npm alias to its exact target package, not a same-prefix package. */
+function isAliasFor(value: unknown, packageName: string): boolean {
+  if (typeof value !== 'string') return false;
+  const alias = /^npm:(@?[^@]+)(?:@.+)?$/.exec(value);
+  return alias?.[1] === packageName;
+}
+
 /** Installable replacement packages whose latest version we need to look up. */
 export function replacementPackages(findings: readonly Finding[]): string[] {
   const out = new Set<string>();
@@ -148,7 +155,7 @@ export function resurrect(
     if (!r) continue;
     const section = obj[f.dep.kind];
     if (!isObj(section)) continue;
-    const key = Object.keys(section).find((k) => k === f.dep.name || String(section[k]).startsWith(`npm:${f.dep.name}`));
+    const key = Object.keys(section).find((k) => k === f.dep.name || isAliasFor(section[k], f.dep.name));
     if (!key) continue;
     const first = r.alts[0];
     const alt = firstInstallable(r.alts);
